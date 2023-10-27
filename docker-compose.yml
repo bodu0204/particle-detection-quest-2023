@@ -1,0 +1,16 @@
+version: "3"
+
+# All available services
+services:
+
+  jupyter:
+    container_name: "particle-detection-quest-2023_jupyter"
+    env_file: ./work/.env
+    build:
+      context: ./docker/jupyter
+      dockerfile: ./Dockerfile
+    restart: always
+    volumes:
+      - ./work:/opt/work
+    ports:
+      - "8888:8888"
