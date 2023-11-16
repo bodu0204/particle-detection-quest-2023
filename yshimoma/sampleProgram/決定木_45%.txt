@@ -1,0 +1,22 @@
+決定木_45%
+
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score
+
+def solution(x_test_df, train_df):
+    # 数値データのみを抽出
+    X_train = train_df.select_dtypes(include=[np.number])
+    y_train = train_df['failureType']
+
+    # 決定木モデルのインスタンスを生成し学習させる
+    clf = DecisionTreeClassifier(random_state=42)
+    clf.fit(X_train, y_train)
+
+    # テストデータからも同様に数値データのみを抽出する
+    x_test_df = x_test_df.select_dtypes(include=[np.number])
+
+    # テストデータに対して予測を行う
+    predictions = clf.predict(x_test_df)
+
+    # 予測結果をDataFrameとして返す
+    return pd.DataFrame({'failureType': predictions}, index=x_test_df.index)

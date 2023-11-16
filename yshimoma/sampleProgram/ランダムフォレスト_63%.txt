@@ -1,0 +1,42 @@
+ランダムフォレスト_63%
+
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import accuracy_score
+
+def extract_features_from_waferMap(df):
+    df = df.copy()  # データを直接変更しないようにコピーを作成
+    df['waferMap_sum'] = df['waferMap'].apply(lambda x: np.sum(np.array(x)))
+    df['waferMap_mean'] = df['waferMap'].apply(lambda x: np.mean(np.array(x)))
+    return df
+
+def preprocess_data(data):
+    # waferMapから特徴量を抽出
+    data = extract_features_from_waferMap(data)
+    
+    # 選択した特徴量をデータフレームとして返す
+    X = data[['dieSize', 'waferIndex', 'waferMap_sum', 'waferMap_mean']]
+    return X
+
+def solution(x_test_df, train_df):
+    # データの前処理
+    X_train = preprocess_data(train_df)
+    y_train = train_df['failureType']
+    
+    # ラベルのエンコーディング
+    le = LabelEncoder()
+    y_train_encoded = le.fit_transform(y_train)
+    
+    # ランダムフォレストクラス分類器の訓練
+    clf = RandomForestClassifier(n_estimators=100, random_state=42)
+    clf.fit(X_train, y_train_encoded)
+    
+    # テストデータの予測
+    X_test = preprocess_data(x_test_df)
+    y_pred_encoded = clf.predict(X_test)
+    y_pred = le.inverse_transform(y_pred_encoded)
+    
+    return pd.DataFrame({'failureType': y_pred}, index=x_test_df.index)

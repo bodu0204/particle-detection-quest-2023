@@ -1,0 +1,36 @@
+ランダムフォレスト_42%
+下記のコードでは、RandomForestClassifierを使用しています。
+これは、ランダムフォレストというアルゴリズムを利用したクラス分類のためのモデルです。
+
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import accuracy_score
+
+def preprocess_data(data):
+    # `waferMap` はおそらく画像データや配列データを含むため、ここでは扱いません。
+    # 必要に応じて追加の前処理を行うことが考えられます。
+    X = data[['dieSize', 'waferIndex']]
+    return X
+
+def solution(x_test_df, train_df):
+    # データの前処理
+    X_train = preprocess_data(train_df)
+    y_train = train_df['failureType']
+    
+    # ラベルのエンコーディング
+    le = LabelEncoder()
+    y_train_encoded = le.fit_transform(y_train)
+    
+    # ランダムフォレストクラス分類器の訓練
+    clf = RandomForestClassifier(n_estimators=100, random_state=42)
+    clf.fit(X_train, y_train_encoded)
+    
+    # テストデータの予測
+    X_test = preprocess_data(x_test_df)
+    y_pred_encoded = clf.predict(X_test)
+    y_pred = le.inverse_transform(y_pred_encoded)
+    
+    return pd.DataFrame({'failureType': y_pred}, index=x_test_df.index)

@@ -1,0 +1,32 @@
+決定木_60%
+
+def extract_features_from_waferMap(df):
+    df = df.copy()  # データを直接変更しないようにコピーを作成
+    df['waferMap_sum'] = df['waferMap'].apply(lambda x: np.sum(np.array(x)))
+    df['waferMap_mean'] = df['waferMap'].apply(lambda x: np.mean(np.array(x)))
+    return df
+
+def generate_features(df):
+    df = extract_features_from_waferMap(df)
+    return df
+
+def solution(x_test_df, train_df):
+    # 特徴量生成
+    train_df = generate_features(train_df)
+    x_test_df = generate_features(x_test_df)
+    
+    # 学習データの特徴と目的変数を分離
+    X_train = train_df[['waferMap_sum', 'waferMap_mean', 'dieSize', 'waferIndex']]
+    y_train = train_df['failureType']
+
+    # 決定木モデルの学習
+    clf = DecisionTreeClassifier(random_state=42)
+    clf.fit(X_train, y_train)
+
+    # テストデータの特徴量を抽出
+    x_test_features = x_test_df[['waferMap_sum', 'waferMap_mean', 'dieSize', 'waferIndex']]
+
+    # 予測実行
+    predictions = clf.predict(x_test_features)
+    
+    return pd.DataFrame({'failureType': predictions}, index=x_test_df.index)

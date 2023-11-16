@@ -1,0 +1,9 @@
+def solution(x_test_df, train_df):
+    # こちらの関数の中身を編集してください。
+    import random
+    failure_types = list(train_df['failureType'].unique())
+    num_rows = len(x_test_df)
+    while len(failure_types) < num_rows:
+        failure_types.append(random.choice(failure_types))
+
+    return pd.DataFrame({'failureType': failure_types}, index=x_test_df.index)
