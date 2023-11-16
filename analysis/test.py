@@ -17,7 +17,6 @@ def normalize_map(map, resize_shape=(28, 28)):
     # リサイズし、1を減算
     return np.asarray(Image.fromarray(map - 1.0).resize(resize_shape))
     
-
 def create_model(input_shape=(28, 28, 3), num_classes=1000):
     import tensorflow as tf
 
@@ -60,7 +59,7 @@ def solution(x_test_df, train_df):
     model.compile(optimizer='adam',
               loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
               metrics=['accuracy'])
-    model.fit(normalized_train_maps, train_labels, epochs=6, class_weight=class_weights)
+    model.fit(normalized_train_maps, train_labels, epochs=2, class_weight=class_weights)
 
     
     normalized_test_maps = np.array([normalize_map(x) for x in x_test_df['waferMap']])
