@@ -2,39 +2,42 @@ import numpy as np # https://numpy.org/ja/
 import pandas as pd # https://pandas.pydata.org/
 from sklearn.model_selection import train_test_split
 
-def normalize_map(map, resize_shape=(64,64)):
+def normalize_map(map, resize_shape=(28, 28)):
     from PIL import Image
-
-    (len_y,len_x) = map.shape
+    len_y, len_x = map.shape
     y_add = len_y // 2 + len_y % 2
     x_add = len_x // 2 + len_x % 2
-    for y in range(len_y):
-        for x in range(len_x):
-            if map[y][x] == 0:
-                map[y][x] = map[(y + y_add) % len_y][(x + x_add) % len_x]
+
+    # 0の値のインデックスを取得
+    y_indices, x_indices = np.where(map == 0)
+
+    # 0の値を置換
+    map[y_indices, x_indices] = map[(y_indices + y_add) % len_y, (x_indices + x_add) % len_x]
+
+    # リサイズし、1を減算
     return np.asarray(Image.fromarray(map - 1.0).resize(resize_shape))
     
 
-def create_model(input_shape=(227, 227, 3), num_classes=1000):
+def create_model(input_shape=(28, 28, 3), num_classes=1000):
     import tensorflow as tf
 
     layers = tf.keras.layers
     return tf.keras.models.Sequential([
-        layers.Conv2D(32, activation=tf.nn.relu, kernel_size=(5,5), padding='same', input_shape=input_shape),
+        layers.Conv2D(32, activation=tf.nn.relu, kernel_size=(5,5), padding='same', input_shape=(28, 28, 1)),
         layers.MaxPooling2D(pool_size=(2, 2)),
         layers.Conv2D(32, activation=tf.nn.relu, kernel_size=(5,5), padding='same'),
         layers.MaxPooling2D(pool_size=(2, 2)),
         layers.Flatten(),
-        layers.Dense(96, activation=tf.nn.relu),
-        layers.Dense(24, activation=tf.nn.relu),
-        layers.Dense(num_classes, activation=tf.nn.softmax),
+        layers.Dense(128, activation=tf.nn.relu),
+        layers.Dropout(0.2),
+        layers.Dense(8),
     ])
 
 def solution(x_test_df, train_df):
     import tensorflow as tf
     from sklearn.utils.class_weight import compute_class_weight
 
-    resize_shape = (64,64)
+    resize_shape = (28,28)
     failure_types = list(train_df['failureType'].unique())
 
     # 前処理
@@ -55,14 +58,16 @@ def solution(x_test_df, train_df):
     class_weights = dict(enumerate(class_weights))
     model = create_model(input_shape=normalized_train_maps[0].shape,num_classes=len(failure_types))
     model.compile(optimizer='adam',
-              loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False),
+              loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
               metrics=['accuracy'])
-    model.fit(normalized_train_maps, train_labels, epochs=2, class_weight=class_weights)
+    model.fit(normalized_train_maps, train_labels, epochs=6, class_weight=class_weights)
+
     
     normalized_test_maps = np.array([normalize_map(x) for x in x_test_df['waferMap']])
     normalized_test_maps = normalized_test_maps.reshape(normalized_test_maps.shape + (1,))
     test_index = [x for x in x_test_df['waferIndex']]
-    predictions = model.predict(normalized_test_maps)
+    model.predict(normalized_test_maps)
+    predictions = tf.nn.softmax(model.predict(normalized_test_maps)).numpy()
     answer = [failure_types[x.argmax()] for x in predictions]
     return pd.DataFrame({'failureType': answer}, index=x_test_df.index)
 
