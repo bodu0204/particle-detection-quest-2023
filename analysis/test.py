@@ -3,7 +3,6 @@ import pandas as pd # https://pandas.pydata.org/
 from sklearn.model_selection import train_test_split
 
 def normalize_map(map, resize_shape=(64,64)):
-    import numpy as np
     from PIL import Image
 
     (len_y,len_x) = map.shape
@@ -26,28 +25,18 @@ def create_model(input_shape=(227, 227, 3), num_classes=1000):
         layers.Conv2D(32, activation=tf.nn.relu, kernel_size=(5,5), padding='same'),
         layers.MaxPooling2D(pool_size=(2, 2)),
         layers.Flatten(),
-        layers.Dense(128, activation=tf.nn.relu),
+        layers.Dense(96, activation=tf.nn.relu),
+        layers.Dense(24, activation=tf.nn.relu),
         layers.Dense(num_classes, activation=tf.nn.softmax),
     ])
 
-def show_img(image):
-    import matplotlib.pyplot as plt
-
-    plt.figure()
-    plt.imshow(image)
-    plt.colorbar()
-    plt.grid(False)
-    plt.show()
-
 def solution(x_test_df, train_df):
-    import numpy as np
     import tensorflow as tf
-    import pandas as pd
     from sklearn.utils.class_weight import compute_class_weight
 
     resize_shape = (64,64)
-
     failure_types = list(train_df['failureType'].unique())
+
     # 前処理
     normalized_train_maps = np.array([normalize_map(x) for x in train_df['waferMap']])
     print(normalized_train_maps.shape)
@@ -56,19 +45,18 @@ def solution(x_test_df, train_df):
     normalized_train_maps = np.concatenate((normalized_train_maps, np.swapaxes(normalized_train_maps, 1, 2)), axis=0)
     normalized_train_maps = normalized_train_maps.reshape(normalized_train_maps.shape + (1,))
     train_labels = np.array([failure_types.index(x) for x in train_df['failureType']] * 8)
-    show_img(normalized_train_maps[0])
     print(normalized_train_maps.shape)
     print(train_labels.shape)
+    # クラスの重みを計算
     class_weights = compute_class_weight(class_weight='balanced', 
                                          classes=np.unique(train_labels), 
                                          y=train_labels)
+    # クラスの重みを辞書型に変換
     class_weights = dict(enumerate(class_weights))
     model = create_model(input_shape=normalized_train_maps[0].shape,num_classes=len(failure_types))
     model.compile(optimizer='adam',
-              loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+              loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False),
               metrics=['accuracy'])
-    
-    
     model.fit(normalized_train_maps, train_labels, epochs=2, class_weight=class_weights)
     
     normalized_test_maps = np.array([normalize_map(x) for x in x_test_df['waferMap']])
