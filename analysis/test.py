@@ -2,9 +2,15 @@ import numpy as np # https://numpy.org/ja/
 import pandas as pd # https://pandas.pydata.org/
 from sklearn.model_selection import train_test_split
 
-def normalize_map(map, resize_shape=(28, 28)):
+def normalize_map(map):
     from PIL import Image
+
+    # リサイズ後のサイズを指定
+    resize_shape = (28, 28)
+    # マップの次元を取得
     len_y, len_x = map.shape
+
+    # マップの中心y座標とx座標を取得
     y_add = len_y // 2 + len_y % 2
     x_add = len_x // 2 + len_x % 2
 
@@ -13,11 +19,12 @@ def normalize_map(map, resize_shape=(28, 28)):
     # 0の値を置換
     map[y_indices, x_indices] = map[(y_indices + y_add) % len_y, (x_indices + x_add) % len_x]
     # リサイズし、1を減算
-    return np.asarray(Image.fromarray(map - 1.0).resize(resize_shape))
+    resized_map = Image.fromarray(map - 1.0).resize(resize_shape)
+    return np.asarray(resized_map)
 
-def preprocess_map(train_df, normalize_map_func):
+def preprocess_map(train_df, normalize_map):
     # データの正規化
-    normalized_train_maps = np.array([normalize_map_func(x) for x in train_df['waferMap']])
+    normalized_train_maps = np.array([normalize_map(x) for x in train_df['waferMap']])
 
     # データ拡張（90度回転、水平反転など）
     normalized_train_maps = np.concatenate((normalized_train_maps, np.rot90(normalized_train_maps, k=2, axes=(1, 2))), axis=0)
@@ -29,20 +36,20 @@ def preprocess_map(train_df, normalize_map_func):
 
     return normalized_train_maps
     
-def create_model(input_shape=(28, 28, 3), num_classes=1000):
+def create_model(input_shape, num_classes):
     import tensorflow as tf
 
-    layers = tf.keras.layers
-    return tf.keras.models.Sequential([
-        layers.Conv2D(32, activation=tf.nn.relu, kernel_size=(5,5), padding='same', input_shape=(28, 28, 1)),
-        layers.MaxPooling2D(pool_size=(2, 2)),
-        layers.Conv2D(32, activation=tf.nn.relu, kernel_size=(5,5), padding='same'),
-        layers.MaxPooling2D(pool_size=(2, 2)),
-        layers.Flatten(),
-        layers.Dense(128, activation=tf.nn.relu),
-        layers.Dropout(0.2),
-        layers.Dense(8),
+    model = tf.keras.models.Sequential([
+        tf.keras.layers.Conv2D(32, activation=tf.nn.relu, kernel_size=(5,5), padding='same', input_shape=input_shape),
+        tf.keras.layers.MaxPooling2D(pool_size=(2, 2)),
+        tf.keras.layers.Conv2D(32, activation=tf.nn.relu, kernel_size=(5,5), padding='same'),
+        tf.keras.layers.MaxPooling2D(pool_size=(2, 2)),
+        tf.keras.layers.Flatten(),
+        tf.keras.layers.Dense(128, activation=tf.nn.relu),
+        tf.keras.layers.Dropout(0.2),
+        tf.keras.layers.Dense(num_classes),
     ])
+    return model
 
 def calculate_class_weights(train_labels):
     from sklearn.utils.class_weight import compute_class_weight
@@ -83,30 +90,27 @@ def plot_confusion_matrix_and_accuracy(y_true, y_pred, classes):
 
 def solution(x_test_df, train_df):
     import tensorflow as tf
-
-    resize_shape = (28,28)
     failure_types = list(train_df['failureType'].unique())
 
     # 前処理
     normalized_train_maps = preprocess_map(train_df, normalize_map)
+    # データ拡張を行う場合はtrain_labelsを変更する必要がある
     train_labels = np.array([failure_types.index(x) for x in train_df['failureType']] * 8)
 
-    print(normalized_train_maps.shape)
-    print(train_labels.shape)
     class_weights = calculate_class_weights(train_labels)
 
-    model = create_model(input_shape=normalized_train_maps[0].shape,num_classes=len(failure_types))
+    model = create_model(normalized_train_maps[0].shape, len(failure_types))
     model.compile(optimizer='adam',
-              loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-              metrics=['accuracy'])
+                  loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+                  metrics=['accuracy'])
     model.fit(normalized_train_maps, train_labels, epochs=2, class_weight=class_weights)
+
     normalized_test_maps = np.array([normalize_map(x) for x in x_test_df['waferMap']])
     normalized_test_maps = normalized_test_maps.reshape(normalized_test_maps.shape + (1,))
 
-    test_index = [x for x in x_test_df['waferIndex']]
-
     predictions = tf.nn.softmax(model.predict(normalized_test_maps)).numpy()
     answer = [failure_types[x.argmax()] for x in predictions]
+
     return pd.DataFrame({'failureType': answer}, index=x_test_df.index)
 
 # データのインポート
