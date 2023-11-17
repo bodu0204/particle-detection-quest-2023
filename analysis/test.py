@@ -40,9 +40,9 @@ def create_model(input_shape, num_classes):
     import tensorflow as tf
 
     model = tf.keras.models.Sequential([
-        tf.keras.layers.Conv2D(32, activation=tf.nn.relu, kernel_size=(5,5), padding='same', input_shape=input_shape),
+        tf.keras.layers.Conv2D(16, activation=tf.nn.relu, kernel_size=(4,4), padding='same', input_shape=input_shape),
         tf.keras.layers.MaxPooling2D(pool_size=(2, 2)),
-        tf.keras.layers.Conv2D(32, activation=tf.nn.relu, kernel_size=(5,5), padding='same'),
+        tf.keras.layers.Conv2D(16, activation=tf.nn.relu, kernel_size=(4,4), padding='same'),
         tf.keras.layers.MaxPooling2D(pool_size=(2, 2)),
         tf.keras.layers.Flatten(),
         tf.keras.layers.Dense(128, activation=tf.nn.relu),
@@ -50,6 +50,7 @@ def create_model(input_shape, num_classes):
         tf.keras.layers.Dense(num_classes),
     ])
     return model
+
 
 def calculate_class_weights(train_labels):
     from sklearn.utils.class_weight import compute_class_weight
@@ -64,13 +65,7 @@ def plot_confusion_matrix_and_accuracy(y_true, y_pred, classes):
     import seaborn as sns
     import matplotlib.pyplot as plt
     from sklearn.metrics import confusion_matrix
-    """
-    Confusion matrixをプロットし、各クラスの正確さを計算して表示します。
 
-    :param y_true: 実際のラベルのDataFrame
-    :param y_pred: 予測されたラベルのDataFrame
-    :param classes: クラスのリスト
-    """
     # Confusion matrixの計算
     cm = confusion_matrix(y_true, y_pred, labels=classes)
 
@@ -82,11 +77,18 @@ def plot_confusion_matrix_and_accuracy(y_true, y_pred, classes):
     plt.xlabel('Predicted')
     plt.show()
 
-    # 各クラスごとの正確さを計算して表示
-    print("\nClass Accuracy:")
+    # 各クラスごとの正確さと最も間違えやすいクラスを表示
+    print("\nClass Accuracy and Most Common Errors:")
     for i, class_name in enumerate(classes):
         accuracy = cm[i, i] / cm[i, :].sum()
-        print(f"{class_name}: {accuracy * 100:.2f}%")
+        print(f"{class_name}: Accuracy: {accuracy * 100:.2f}%")
+        
+        # 最も間違えやすいクラスを特定
+        error_indices = cm[i, :].argsort()[-2:-1] if accuracy < 1 else []
+        for error_index in error_indices:
+            error_rate = cm[i, error_index] / cm[i, :].sum()
+            error_class = classes[error_index]
+            print(f"    Most common error: Mistaken for {error_class} ({error_rate * 100:.2f}%)")
 
 def solution(x_test_df, train_df):
     import tensorflow as tf
@@ -113,6 +115,7 @@ def solution(x_test_df, train_df):
 
     return pd.DataFrame({'failureType': answer}, index=x_test_df.index)
 
+# 以下は編集しないでください
 # データのインポート
 df=pd.read_pickle("../work/input/LSWMD_25519.pkl")
 
