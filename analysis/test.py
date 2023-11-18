@@ -6,7 +6,7 @@ def normalize_map(map):
     from PIL import Image
 
     # リサイズ後のサイズを指定
-    resize_shape = (28, 28)
+    resize_shape = (20, 20)
     # マップの次元を取得
     len_y, len_x = map.shape
 
