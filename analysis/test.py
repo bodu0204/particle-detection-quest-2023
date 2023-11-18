@@ -40,17 +40,18 @@ def create_model(input_shape, num_classes):
     import tensorflow as tf
 
     model = tf.keras.models.Sequential([
-        tf.keras.layers.Conv2D(16, activation=tf.nn.relu, kernel_size=(4,4), padding='same', input_shape=input_shape),
+        tf.keras.layers.Conv2D(16, activation=tf.nn.relu, kernel_size=(3,3), padding='same', input_shape=input_shape),
         tf.keras.layers.MaxPooling2D(pool_size=(2, 2)),
-        tf.keras.layers.Conv2D(16, activation=tf.nn.relu, kernel_size=(4,4), padding='same'),
+        tf.keras.layers.Conv2D(32, activation=tf.nn.relu, kernel_size=(3,3), padding='same'),
         tf.keras.layers.MaxPooling2D(pool_size=(2, 2)),
         tf.keras.layers.Flatten(),
+        tf.keras.layers.Dense(512, activation=tf.nn.relu),
+        tf.keras.layers.Dropout(0.2),
         tf.keras.layers.Dense(128, activation=tf.nn.relu),
         tf.keras.layers.Dropout(0.2),
         tf.keras.layers.Dense(num_classes),
     ])
     return model
-
 
 def calculate_class_weights(train_labels):
     from sklearn.utils.class_weight import compute_class_weight
@@ -93,6 +94,7 @@ def plot_confusion_matrix_and_accuracy(y_true, y_pred, classes):
 def solution(x_test_df, train_df):
     import tensorflow as tf
     failure_types = list(train_df['failureType'].unique())
+    
 
     # 前処理
     normalized_train_maps = preprocess_map(train_df, normalize_map)
