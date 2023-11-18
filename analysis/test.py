@@ -20,7 +20,7 @@ def normalize_map(map):
     map[y_indices, x_indices] = map[(y_indices + y_add) % len_y, (x_indices + x_add) % len_x]
     # リサイズし、1を減算
     resized_map = Image.fromarray(map - 1.0).resize(resize_shape)
-    return np.asarray(resized_map)
+    return np.asarray(resized_map, dtype=np.float16)
 
 def preprocess_map(train_df, normalize_map):
     # データの正規化
@@ -49,7 +49,7 @@ def create_model(input_shape, num_classes):
         tf.keras.layers.Dropout(0.2),
         tf.keras.layers.Dense(128, activation=tf.nn.relu),
         tf.keras.layers.Dropout(0.2),
-        tf.keras.layers.Dense(num_classes),
+        tf.keras.layers.Dense(num_classes, dtype='float32'),
     ])
     return model
 
@@ -94,7 +94,6 @@ def plot_confusion_matrix_and_accuracy(y_true, y_pred, classes):
 def solution(x_test_df, train_df):
     import tensorflow as tf
     failure_types = list(train_df['failureType'].unique())
-    
 
     # 前処理
     normalized_train_maps = preprocess_map(train_df, normalize_map)
@@ -112,7 +111,7 @@ def solution(x_test_df, train_df):
     normalized_test_maps = np.array([normalize_map(x) for x in x_test_df['waferMap']])
     normalized_test_maps = normalized_test_maps.reshape(normalized_test_maps.shape + (1,))
 
-    predictions = tf.nn.softmax(model.predict(normalized_test_maps)).numpy()
+    predictions = tf.nn.softmax(model.predict(normalized_test_maps, batch_size=32)).numpy().astype(np.float32)
     answer = [failure_types[x.argmax()] for x in predictions]
 
     return pd.DataFrame({'failureType': answer}, index=x_test_df.index)
